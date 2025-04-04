@@ -28,7 +28,7 @@ font = pygame.font.SysFont("Verdana", 60)
 font_small = pygame.font.SysFont("Verdana", 20)
 game_over = font.render("Game Over", True, BLACK)
 
-background = pygame.image.load("C:\Users\gala\Desktop\My_subjects\pp2\labs\lab9\AnimatedStreet.png")
+background = pygame.image.load(r"C:\Users\gala\Desktop\My_subjects\pp2\labs\lab9\AnimatedStreet.png")
 
 #Create a white screen 
 DISPLAYSURF = pygame.display.set_mode((400,600))
@@ -39,7 +39,7 @@ pygame.display.set_caption("Game")
 class Enemy(pygame.sprite.Sprite):
       def __init__(self):
         super().__init__() 
-        self.image = pygame.image.load("C:\Users\gala\Desktop\My_subjects\pp2\labs\lab9\Enemy.png")
+        self.image = pygame.image.load(r"C:\Users\gala\Desktop\My_subjects\pp2\labs\lab9\Enemy.png")
         self.rect = self.image.get_rect()
         self.rect.center = (random.randint(40,SCREEN_WIDTH-40), 0)
 
@@ -55,7 +55,7 @@ class Enemy(pygame.sprite.Sprite):
 class Player(pygame.sprite.Sprite):
     def __init__(self):
         super().__init__() 
-        self.image = pygame.image.load("C:\Users\gala\Desktop\My_subjects\pp2\labs\lab9\Player.png")
+        self.image = pygame.image.load(r"C:\Users\gala\Desktop\My_subjects\pp2\labs\lab9\Player.png")
         self.rect = self.image.get_rect()
         self.rect.center = (160, 520)
        
@@ -100,8 +100,8 @@ coin_rect = coin_surface.get_rect(center=(coin_x, coin_y)) # The Rect object of 
 coin = 0 # The number of coins that we got
 coin_state = True # Check for coin appearance of screen()
 # Sides 
-temp_surface = pygame.Surface((20, ))
-temp_surface_rect = temp_surface.get_rect(midrigth = (20, 600))
+temp_surface = pygame.Surface((20,600 ))
+temp_surface_rect = temp_surface.get_rect(midright = (20, 600))
 temp_surface.fill("White")
 while True:
     
@@ -126,7 +126,7 @@ while True:
 
     #To be run if collision occurs between Player and Enemy
     if pygame.sprite.spritecollideany(P1, enemies):
-          pygame.mixer.Sound('lab8/crash.wav').play()
+          pygame.mixer.Sound(r'lab8/crash.wav').play()
           time.sleep(1)
                    
           DISPLAYSURF.fill(RED)

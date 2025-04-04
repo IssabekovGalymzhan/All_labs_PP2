@@ -6,7 +6,7 @@ pygame.init()
 a = pygame.display.set_mode((1000,650))
 pygame.display.set_caption("Second")
 
-b = pygame.image.load("C:\Users\gala\Desktop\My_subjects\pp2\labs\lab7\clock.png")
+b = pygame.image.load(r"C:\Users\gala\Desktop\My_subjects\pp2\labs\lab7\clock.png")
 b = pygame.transform.scale(b,(1000, 650))
 
 h = pygame.image.load(r"C:\Users\gala\Desktop\My_subjects\pp2\labs\lab7\rightarm.png")
