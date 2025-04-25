@@ -1,0 +1,79 @@
+-- 1. Создание таблицы phonebook
+CREATE TABLE IF NOT EXISTS phonebook (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50),
+    surname VARCHAR(50),
+    phone VARCHAR(20)
+);
+
+
+
+-- 2. Процедура для вставки/обновления (upsert)
+CREATE OR REPLACE PROCEDURE upsert_user(
+    first_name VARCHAR,
+    last_name VARCHAR,
+    phone_number VARCHAR,
+    email_address VARCHAR
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM phonebook 
+        WHERE name = first_name AND surname = last_name
+    ) THEN
+        UPDATE phonebook 
+        SET phone = phone_number
+        WHERE name = first_name AND surname = last_name;
+    ELSE
+        INSERT INTO phonebook(name, surname, phone)
+        VALUES (first_name, last_name, phone_number);
+    END IF;
+END;
+$$;
+
+
+
+-- 3. Функция поиска по паттерну
+CREATE OR REPLACE FUNCTION search_pattern(pattern TEXT)
+RETURNS TABLE(id INT, name TEXT, surname TEXT, phone TEXT)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT * FROM phonebook
+    WHERE name ILIKE '%' || pattern || '%'
+       OR surname ILIKE '%' || pattern || '%'
+       OR phone ILIKE '%' || pattern || '%';
+END;
+$$;
+
+-- 4. Процедура удаления по шаблону
+CREATE OR REPLACE PROCEDURE delete_by_pattern(pattern TEXT)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    DELETE FROM phonebook
+    WHERE name ILIKE '%' || pattern || '%'
+       OR surname ILIKE '%' || pattern || '%'
+       OR phone ILIKE '%' || pattern || '%';
+END;
+$$;
+
+-- 5. Процедура обновления по id
+CREATE OR REPLACE PROCEDURE update_user(
+    user_id INT,
+    new_name VARCHAR,
+    new_surname VARCHAR,
+    new_phone VARCHAR
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    UPDATE phonebook
+    SET name = new_name,
+        surname = new_surname,
+        phone = new_phone
+    WHERE id = user_id;
+END;
+$$;
