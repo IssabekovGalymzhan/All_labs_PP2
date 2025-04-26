@@ -1,133 +1,141 @@
 import pygame
-import sys
 import random
-import time
-from db import save_user_game, get_user_game
-import sys
+import psycopg2
 
-# Получаем user_id из аргументов
-user_id = int(sys.argv[1])
+# Подключение к БД
+conn = psycopg2.connect(
+    host="localhost",
+    database="phonebook_db",
+    user="postgres",
+    password="Galymzhan_8"
+)
+cur = conn.cursor()
 
-# --- Настройки уровней ---
-levels = {
-    1: {'speed': 10, 'walls': []},
-    2: {'speed': 15, 'walls': [(100, 100), (120, 100), (140, 100)]},
-    3: {'speed': 20, 'walls': [(200, 200), (220, 200), (240, 200), (260, 200)]}
-}
+# Получить пользователя или создать нового
+def get_user(username):
+    cur.execute('SELECT id FROM users WHERE username = %s', (username,))
+    user = cur.fetchone()
+    if user:
+        return user[0]
+    else:
+        cur.execute('INSERT INTO users (username) VALUES (%s) RETURNING id', (username,))
+        conn.commit()
+        return cur.fetchone()[0]
 
-# --- Настройки окна ---
-WIDTH, HEIGHT = 600, 400
-BLOCK_SIZE = 20
+# Сохранить результат
+def save_score(user_id, score):
+    cur.execute('INSERT INTO user_scores (user_id, score) VALUES (%s, %s)', (user_id, score))
+    conn.commit()
 
-# --- Цвета ---
-WHITE = (255, 255, 255)
-GREEN = (0, 255, 0)
-RED   = (255, 0, 0)
-BLACK = (0, 0, 0)
-GRAY  = (100, 100, 100)
-
-# --- Функция для отображения текста ---
-def draw_text(screen, text, size, x, y, color=WHITE):
-    font = pygame.font.SysFont('Arial', size)
-    text_surface = font.render(text, True, color)
-    screen.blit(text_surface, (x, y))
-
-# --- Инициализация Pygame ---
+# Pygame
 pygame.init()
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("🐍 Snake Game")
+
+white = (255, 255, 255)
+black = (0, 0, 0)
+red = (213, 50, 80)
+green = (0, 255, 0)
+
+dis_width = 800
+dis_height = 600
+
+dis = pygame.display.set_mode((dis_width, dis_height))
+pygame.display.set_caption('Snake Game')
+
 clock = pygame.time.Clock()
+snake_block = 10
+snake_speed = 15
 
-# --- Восстановление состояния пользователя ---
-loaded = get_user_game(user_id)
-if loaded:
-    score, level, saved_state = loaded
-    if saved_state:
-        snake = eval(saved_state)  # преобразуем строку обратно в список
-    else:
-        snake = [(100, 100)]
-else:
-    score = 0
-    level = 1
-    snake = [(100, 100)]
+font_style = pygame.font.SysFont(None, 50)
 
-direction = (BLOCK_SIZE, 0)
-food = (random.randint(0, (WIDTH - BLOCK_SIZE) // BLOCK_SIZE) * BLOCK_SIZE,
-        random.randint(0, (HEIGHT - BLOCK_SIZE) // BLOCK_SIZE) * BLOCK_SIZE)
+def our_snake(snake_block, snake_list):
+    for x in snake_list:
+        pygame.draw.rect(dis, black, [x[0], x[1], snake_block, snake_block])
 
-paused = False
+def message(msg, color):
+    mesg = font_style.render(msg, True, color)
+    dis.blit(mesg, [dis_width / 6, dis_height / 3])
 
-# --- Основной цикл ---
-running = True
-while running:
-    screen.fill(BLACK)
+def gameLoop(user_id):  
+    game_over = False
+    game_close = False
 
-    # Рисуем стены
-    for wall in levels[level]['walls']:
-        pygame.draw.rect(screen, GRAY, (*wall, BLOCK_SIZE, BLOCK_SIZE))
+    x1 = dis_width / 2
+    y1 = dis_height / 2
 
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
+    x1_change = 0
+    y1_change = 0
 
-        elif event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_UP and direction != (0, BLOCK_SIZE):
-                direction = (0, -BLOCK_SIZE)
-            elif event.key == pygame.K_DOWN and direction != (0, -BLOCK_SIZE):
-                direction = (0, BLOCK_SIZE)
-            elif event.key == pygame.K_LEFT and direction != (BLOCK_SIZE, 0):
-                direction = (-BLOCK_SIZE, 0)
-            elif event.key == pygame.K_RIGHT and direction != (-BLOCK_SIZE, 0):
-                direction = (BLOCK_SIZE, 0)
-            elif event.key == pygame.K_p:
-                # Сохраняем игру и выходим
-                save_user_game(user_id, score, level, str(snake))
-                print("Игра сохранена.")
-                paused = True
+    snake_list = []
+    length_of_snake = 1
 
-    if paused:
-        draw_text(screen, "Игра на паузе. Нажмите любую клавишу для выхода.", 20, 50, HEIGHT // 2, RED)
-        pygame.display.flip()
-        time.sleep(2)
-        break
+    foodx = round(random.randrange(0, dis_width - snake_block) / 10.0) * 10.0
+    foody = round(random.randrange(0, dis_height - snake_block) / 10.0) * 10.0
 
-    # Движение змейки
-    new_head = (snake[0][0] + direction[0], snake[0][1] + direction[1])
+    while not game_over:
 
-    # Проверка на столкновение со стенами или собой
-    if (
-        new_head in snake or
-        new_head[0] < 0 or new_head[0] >= WIDTH or
-        new_head[1] < 0 or new_head[1] >= HEIGHT or
-        new_head in levels[level]['walls']
-    ):
-        draw_text(screen, "GAME OVER", 40, WIDTH // 3, HEIGHT // 2, RED)
-        pygame.display.flip()
-        time.sleep(2)
-        save_user_game(user_id, 0, 1, None)
-        break
+        while game_close:
+            dis.fill(white)
+            message("You Lost! Press Q-Quit or C-Play Again", red)
+            pygame.display.update()
 
-    snake.insert(0, new_head)
+            for event in pygame.event.get():
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_q:
+                        save_score(user_id, length_of_snake - 1)
+                        game_over = True
+                        game_close = False
+                    if event.key == pygame.K_c:
+                        gameLoop(user_id)
 
-    # Поел или нет
-    if new_head == food:
-        score += 1
-        # Переход на следующий уровень
-        if score % 5 == 0 and level < max(levels.keys()):
-            level += 1
-        food = (random.randint(0, (WIDTH - BLOCK_SIZE) // BLOCK_SIZE) * BLOCK_SIZE,
-                random.randint(0, (HEIGHT - BLOCK_SIZE) // BLOCK_SIZE) * BLOCK_SIZE)
-    else:
-        snake.pop()
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                save_score(user_id, length_of_snake - 1)
+                game_over = True
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_LEFT:
+                    x1_change = -snake_block
+                    y1_change = 0
+                elif event.key == pygame.K_RIGHT:
+                    x1_change = snake_block
+                    y1_change = 0
+                elif event.key == pygame.K_UP:
+                    y1_change = -snake_block
+                    x1_change = 0
+                elif event.key == pygame.K_DOWN:
+                    y1_change = snake_block
+                    x1_change = 0
 
-    # Отрисовка змеи и еды
-    for part in snake:
-        pygame.draw.rect(screen, GREEN, (*part, BLOCK_SIZE, BLOCK_SIZE))
-    pygame.draw.rect(screen, RED, (*food, BLOCK_SIZE, BLOCK_SIZE))
+        if x1 >= dis_width or x1 < 0 or y1 >= dis_height or y1 < 0:
+            game_close = True
+        x1 += x1_change
+        y1 += y1_change
+        dis.fill(white)
+        pygame.draw.rect(dis, green, [foodx, foody, snake_block, snake_block])
+        snake_head = []
+        snake_head.append(x1)
+        snake_head.append(y1)
+        snake_list.append(snake_head)
+        if len(snake_list) > length_of_snake:
+            del snake_list[0]
 
-    draw_text(screen, f"Уровень: {level}  Очки: {score}", 20, 10, 10)
+        for x in snake_list[:-1]:
+            if x == snake_head:
+                game_close = True
 
-    pygame.display.flip()
-    clock.tick(levels[level]['speed'])
+        our_snake(snake_block, snake_list)
+        pygame.display.update()
 
-pygame.quit()
+        if x1 == foodx and y1 == foody:
+            foodx = round(random.randrange(0, dis_width - snake_block) / 10.0) * 10.0
+            foody = round(random.randrange(0, dis_height - snake_block) / 10.0) * 10.0
+            length_of_snake += 1
+
+        clock.tick(snake_speed)
+
+    pygame.quit()
+    quit()
+
+if __name__ == "__main__":
+    username = input("Enter your username: ")
+    user_id = get_user(username)
+    gameLoop(user_id)

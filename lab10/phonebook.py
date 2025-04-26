@@ -1,148 +1,103 @@
+import os
 import psycopg2
 import csv
-from tabulate import tabulate
 
-# Подключение к базе данных PostgreSQL
-conn = psycopg2.connect(host="localhost", dbname="postgres", user="postgres", password="TEMA2007", port=5432)
+# подключение к базе данных
+conn = psycopg2.connect(
+    host="localhost",
+    database="phonebook_db",
+    user="postgres",
+    password="Galymzhan_8"
+)
 cur = conn.cursor()
 
-# Создание таблицы phonebook
-cur.execute("""
+# Создание таблицы
+cur.execute('''
     CREATE TABLE IF NOT EXISTS phonebook (
-        user_id SERIAL PRIMARY KEY,
-        name VARCHAR(255) NOT NULL,
-        surname VARCHAR(255) NOT NULL,
-        phone VARCHAR(255) NOT NULL
-    );
-""")
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255),
+        phone VARCHAR(20)
+    )
+''')
 conn.commit()
 
-# Вставка данных из CSV
-filepath = r'C:\Users\Admin\Git\Programming-Principles-2\lab10.py\contacts.csv'
-def insert_data_from_csv(filepath):
-    try:
-        with open(filepath, 'r') as f:
-            reader = csv.reader(f)
-            next(reader)  
-            for row in reader:
-                cur.execute("INSERT INTO phonebook (name, surname, phone) VALUES (%s, %s, %s)", (row[0], row[1], row[2]))
-            conn.commit()
-            print("Data inserted from CSV file.")
-    except FileNotFoundError:
-        print("File not found.")
-    except Exception as e:
-        print(f"Error: {e}")
-
-# Вставка данных с консоли
-def insert_data_from_console():
+def insert_from_console():
     name = input("Enter name: ")
-    surname = input("Enter surname: ")
-    phone = input("Enter phone number: ")
-    cur.execute("INSERT INTO phonebook (name, surname, phone) VALUES (%s, %s, %s)", (name, surname, phone))
+    phone = input("Enter phone: ")
+    cur.execute('INSERT INTO phonebook (name, phone) VALUES (%s, %s)', (name, phone))
     conn.commit()
-    print("Data inserted from console.")
+    print("Inserted successfully.")
 
-# Обновление данных в таблице
-def update_data(column_name, old_value, new_value):
-    valid_columns = ["name", "surname", "phone"]
-    if column_name not in valid_columns:
-        print("Invalid column name.")
-        return
-
-    cur.execute(f"UPDATE phonebook SET {column_name} = %s WHERE {column_name} = %s", (new_value, old_value))
+def insert_from_csv(file_path):
+    with open(file_path, newline='') as csvfile:
+        reader = csv.reader(csvfile)
+        for row in reader:
+            cur.execute('INSERT INTO phonebook (name, phone) VALUES (%s, %s)', (row[0], row[1]))
     conn.commit()
-    print(f"Updated {column_name}: {old_value} -> {new_value}")
+    print("CSV data inserted successfully.")
 
-# Запрос данных с фильтром
-def query_data(filter_column, filter_value):
-    valid_columns = ["id", "name", "surname", "phone"]
-    if filter_column not in valid_columns:
-        print("Invalid filter column.")
-        return
-    
-    cur.execute(f"SELECT * FROM phonebook WHERE {filter_column} = %s", (filter_value,))
-    rows = cur.fetchall()
-    if rows:
-        print("Results found:")
-        print(tabulate(rows, headers=["ID", "Name", "Surname", "Phone"]))
+def update_data():
+    id = input("Enter id to update: ")
+    new_name = input("Enter new name: ")
+    new_phone = input("Enter new phone: ")
+    cur.execute('UPDATE phonebook SET name = %s, phone = %s WHERE id = %s', (new_name, new_phone, id))
+    conn.commit()
+    print("Updated successfully.")
+
+def query_data():
+    choice = input("Filter by (1) Name, (2) Phone, (3) All: ")
+    if choice == '1':
+        name = input("Enter name to search: ")
+        cur.execute('SELECT * FROM phonebook WHERE name ILIKE %s', ('%' + name + '%',))
+    elif choice == '2':
+        phone = input("Enter phone to search: ")
+        cur.execute('SELECT * FROM phonebook WHERE phone ILIKE %s', ('%' + phone + '%',))
     else:
-        print("No records found.")
+        cur.execute('SELECT * FROM phonebook')
+    
+    rows = cur.fetchall()
+    for row in rows:
+        print(row)
 
-# Удаление данных по фильтру
-def delete_data(filter_column, filter_value):
-    valid_columns = ["name", "surname", "phone"]
-    if filter_column not in valid_columns:
-        print("Invalid column name.")
-        return
-
-    cur.execute(f"DELETE FROM phonebook WHERE {filter_column} = %s", (filter_value,))
+def delete_data():
+    choice = input("Delete by (1) Name or (2) Phone: ")
+    if choice == '1':
+        name = input("Enter name to delete: ")
+        cur.execute('DELETE FROM phonebook WHERE name = %s', (name,))
+    else:
+        phone = input("Enter phone to delete: ")
+        cur.execute('DELETE FROM phonebook WHERE phone = %s', (phone,))
     conn.commit()
-    print(f"Deleted records where {filter_column} = {filter_value}")
+    print("Deleted successfully.")
 
-# Основной цикл с выбором команд
-check = True
-command = ''
-temp = ''
-back = False
+def main():
+    while True:
+        print("\n1. Insert from console")
+        print("2. Insert from CSV")
+        print("3. Update data")
+        print("4. Query data")
+        print("5. Delete data")
+        print("6. Exit")
 
-while check:
-    if not back:
-        print("""
-        List of the commands:
-        1. Type "i" or "I" to INSERT data into the table.
-        2. Type "u" or "U" to UPDATE data in the table.
-        3. Type "q" or "Q" to QUERY data from the table.
-        4. Type "d" or "D" to DELETE data from the table.
-        5. Type "f" or "F" to close the program.
-        6. Type "s" or "S" to SEE the values in the table.
-        """)
-        command = str(input())
+        choice = input("Choose option: ")
+        if choice == '1':
+            insert_from_console()
+        elif choice == '2':
+            path = input("Enter CSV file path: ")
+            insert_from_csv(path)
+        elif choice == '3':
+            update_data()
+        elif choice == '4':
+            query_data()
+        elif choice == '5':
+            delete_data()
+        elif choice == '6':
+            break
+        else:
+            print("Invalid option.")
 
-        # Вставка данных
-        if command == "i" or command == "I":
-            print('Type "csv" to upload from CSV or "con" to enter from console: ')
-            command = str(input())
-            if command == "con":
-                insert_data_from_console()
-            elif command == "csv":
-                filepath = input("Enter the file path: ")
-                insert_data_from_csv(filepath)
-            back = True
+    cur.close()
+    conn.close()
 
-        # Обновление данных
-        if command == "u" or command == "U":
-            temp = input('Type the column name to update (name, surname, phone): ')
-            old_value = input(f'Enter current {temp}: ')
-            new_value = input(f'Enter new {temp}: ')
-            update_data(temp, old_value, new_value)
-            back = True
-
-        # Запрос данных
-        if command == "q" or command == "Q":
-            temp = input("Type the column name for filter (id, name, surname, phone): ")
-            filter_value = input(f"Enter value for {temp}: ")
-            query_data(temp, filter_value)
-            back = True
-
-        # Удаление данных
-        if command == "d" or command == "D":
-            temp = input("Type the column name to delete (name, surname, phone): ")
-            filter_value = input(f"Enter {temp} to delete: ")
-            delete_data(temp, filter_value)
-            back = True
-
-        # Просмотр всех данных
-        if command == "s" or command == "S":
-            cur.execute("SELECT * FROM phonebook;")
-            rows = cur.fetchall()
-            print(tabulate(rows, headers=["ID", "Name", "Surname", "Phone"], tablefmt="fancy_grid"))
-            back = True
-
-        # Завершение работы
-        if command == "f" or command == "F":
-            check = False
-
-# Закрытие соединения с базой данных
-conn.commit()
-cur.close()
-conn.close()
+if __name__ == "__main__":
+    main()
